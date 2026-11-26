@@ -29,6 +29,19 @@
 #include "util/string_util.h"
 
 namespace qcloud_cos {
+namespace {
+
+Poco::Net::Context::Ptr CreateClientContext(bool verify_cert,
+                                          const std::string& ca_location) {
+  const auto verify_mode = verify_cert ? Poco::Net::Context::VERIFY_RELAXED
+                                       : Poco::Net::Context::VERIFY_NONE;
+  return new Poco::Net::Context(
+      Poco::Net::Context::CLIENT_USE, "", "", ca_location, verify_mode, 9,
+      ca_location.empty(), "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+}
+
+}  // namespace
+
 int HttpSender::SendRequest(
     const SharedTransferHandler& handler, const std::string& http_method,
     const std::string& url_str,
@@ -100,18 +113,8 @@ int HttpSender::SendRequest(
     Poco::URI url(url_str);
     std::unique_ptr<Poco::Net::HTTPClientSession> session;
     if (StringUtil::StringStartsWithIgnoreCase(url_str, "https")) {
-      bool load_default_ca = true;
-      if (!ca_location.empty()) {
-        load_default_ca = false;
-      }
-      Poco::Net::Context::VerificationMode verify_mode = Poco::Net::Context::VERIFY_RELAXED;
-      if (!is_verify_cert) {
-        verify_mode = Poco::Net::Context::VERIFY_NONE;
-      }
       Poco::Net::Context::Ptr context =
-          new Poco::Net::Context(Poco::Net::Context::CLIENT_USE, "", "", ca_location,
-                                 verify_mode, 9, load_default_ca,
-                                 "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+          CreateClientContext(is_verify_cert, ca_location);
       session.reset(new Poco::Net::HTTPSClientSession(url.getHost(),
                                                       url.getPort(), context));
     } else {
@@ -320,19 +323,8 @@ int HttpSender::SendRequest(
     Poco::URI url(url_str);
     std::unique_ptr<Poco::Net::HTTPClientSession> session;
     if (StringUtil::StringStartsWithIgnoreCase(url_str, "https")) {
-      bool load_default_ca = true;
-      if (!ca_location.empty()) {
-        load_default_ca = false;
-      }
-      Poco::Net::Context::VerificationMode verify_mode = Poco::Net::Context::VERIFY_RELAXED;
-      if (!is_verify_cert) {
-        verify_mode = Poco::Net::Context::VERIFY_NONE;
-      }
-
       Poco::Net::Context::Ptr context =
-          new Poco::Net::Context(Poco::Net::Context::CLIENT_USE, "", "", ca_location,
-                                 verify_mode, 9, load_default_ca,
-                                 "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+          CreateClientContext(is_verify_cert, ca_location);
       session.reset(new Poco::Net::HTTPSClientSession(url.getHost(),
                                                       url.getPort(), context));
     } else {
